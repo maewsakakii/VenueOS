@@ -92,7 +92,7 @@
     <div id="loginScreen" style="display: none;">
         <div class="login-box">
             <h2 style="color: var(--primary); margin-top:0;">🔒 ยืนยันตัวตน Admin</h2>
-            <input type="password" id="adminPassword")" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center;">
+            <input type="password" id="adminPassword" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center;">
             <button class="btn-submit" onclick="checkLogin()">เข้าสู่ระบบ</button>
             <button style="margin-top: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline; font-family: inherit;" onclick="window.location.hash='#/user'">กลับไปหน้ามุมมองผู้ใช้</button>
         </div>
@@ -197,10 +197,10 @@
     </div>
 
     <script>
-        // ❌ นำลิงก์จาก Google Apps Script มาวางแทนที่ตรงนี้เลยครับ ❌
+        // ลิงก์ API ปัจจุบันของคุณแมว
         const API_URL = "https://script.google.com/macros/s/AKfycbxeAsNSZNfId-3w5KTp0l7jV4Bvn6zNPE9WbjaC13M0-gpSccuoC9Kpwq6jW-HrmPJT/exec";
 
-        let events = []; // ว่างไว้เพื่อรอรับค่าจาก Sheet
+        let events = [];
 
         function initTimePickers() {
             let hourOptions = '';
@@ -230,7 +230,8 @@
         async function fetchEvents() {
             document.getElementById('loader').style.display = 'flex';
             try {
-                const response = await fetch(API_URL);
+                // แก้ไข: เติม ?t=... เพื่อบังคับให้ดึงข้อมูลใหม่เสมอ ป้องกัน Browser จำข้อมูลเก่า
+                const response = await fetch(API_URL + "?t=" + new Date().getTime());
                 const data = await response.json();
                 events = data;
                 renderCalendar();
@@ -489,8 +490,8 @@
         initTimePickers();
         checkRoute();
         
-        // ถ้าใส่ API URL แล้ว ให้ดึงข้อมูลมาแสดง ถ้ายังไม่ใส่จะแสดงปฏิทินเปล่า
-        if(API_URL !== "https://script.google.com/macros/s/AKfycbxeAsNSZNfId-3w5KTp0l7jV4Bvn6zNPE9WbjaC13M0-gpSccuoC9Kpwq6jW-HrmPJT/exec" && API_URL !== "") {
+        // แก้ไข: เช็คแค่ว่า API_URL ไม่ว่างเปล่าพอครับ ไม่ต้องไปเทียบกับลิงก์เก่าแล้ว
+        if(API_URL !== "") {
             fetchEvents();
         } else {
             document.getElementById('loader').style.display = 'none';
