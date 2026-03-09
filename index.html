@@ -198,7 +198,7 @@
 
     <script>
         // ❌ นำลิงก์จาก Google Apps Script มาวางแทนที่ตรงนี้เลยครับ ❌
-        const API_URL = "https://script.google.com/macros/s/AKfycby9e1wFqni25glVVHXygnIIeVYinqjfA63M7nXG7gSxNeQfsr4dCpPg4jNLjRwGZzNI/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbxeAsNSZNfId-3w5KTp0l7jV4Bvn6zNPE9WbjaC13M0-gpSccuoC9Kpwq6jW-HrmPJT/exec";
 
         let events = []; // ว่างไว้เพื่อรอรับค่าจาก Sheet
 
@@ -490,7 +490,7 @@
         checkRoute();
         
         // ถ้าใส่ API URL แล้ว ให้ดึงข้อมูลมาแสดง ถ้ายังไม่ใส่จะแสดงปฏิทินเปล่า
-        if(API_URL !== "https://script.google.com/macros/s/AKfycby9e1wFqni25glVVHXygnIIeVYinqjfA63M7nXG7gSxNeQfsr4dCpPg4jNLjRwGZzNI/exec" && API_URL !== "") {
+        if(API_URL !== "https://script.google.com/macros/s/AKfycbxeAsNSZNfId-3w5KTp0l7jV4Bvn6zNPE9WbjaC13M0-gpSccuoC9Kpwq6jW-HrmPJT/exec" && API_URL !== "") {
             fetchEvents();
         } else {
             document.getElementById('loader').style.display = 'none';
