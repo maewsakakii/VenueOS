@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตารางงาน - ส่วนบริการกลางและพัสดุ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #c9082a;
+            --primary-hover: #a00622;
+            --bg-color: #f8f9fa;
+            --border: #e9ecef;
+            --text-main: #2b2d42;
+            --text-muted: #6c757d;
+            --card-bg: #ffffff;
+            --today-bg: #fff0f3;
+        }
+
+        body { font-family: 'Prompt', sans-serif; background-color: var(--bg-color); margin: 0; padding: 15px 20px; color: var(--text-main); height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; }
+        .header-container { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0; }
+        .role-badge { background: var(--primary); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 500; display: none; }
+        .month-controls { display: flex; align-items: center; gap: 10px; }
+        .month-controls button { background: white; border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; cursor: pointer; font-family: 'Prompt'; font-weight: 500; transition: all 0.2s; }
+        .month-controls button:hover { background: #f1f3f5; }
+        .btn-today { background: var(--today-bg) !important; color: var(--primary) !important; border-color: var(--primary) !important; font-weight: 600 !important; }
+        .btn-today:hover { filter: brightness(0.95); }
+        .month-controls h2 { margin: 0 10px; min-width: 180px; text-align: center; color: var(--primary); font-size: 1.4em; }
+
+        .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; width: 100%; flex: 1; min-height: 0; }
+        .calendar-container { background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; position: relative;}
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); background: #f1f3f5; text-align: center; font-weight: 500; padding: 10px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .calendar-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); }
+        .calendar-day { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px; position: relative; overflow-y: auto; display: flex; flex-direction: column; transition: background 0.2s; }
+        .calendar-day::-webkit-scrollbar { width: 4px; }
+        .calendar-day::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .calendar-day.empty { background-color: #fdfdfd; cursor: default; }
+        .calendar-day.today { background-color: var(--today-bg); }
+        .calendar-day.today .day-number { background-color: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; justify-content: center; align-items: center; }
+        .admin-mode .calendar-day:not(.empty):hover { background-color: #f1f3f5; cursor: pointer; }
+        .day-number { font-weight: 500; margin-bottom: 4px; display: inline-block; flex-shrink: 0; font-size: 0.9em; }
+
+        .event-chip { background-color: white; color: var(--text-main); padding: 3px 6px; border-radius: 4px; font-size: 0.75em; margin-bottom: 3px; cursor: pointer; border-left: 3px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+        .event-chip:hover { filter: brightness(0.95); background-color: #f8f9fa; }
+        .event-time-badge { font-weight: 600; color: var(--primary); margin-right: 4px; }
+
+        .sidebar { background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); height: 100%; overflow-y: auto; box-sizing: border-box; }
+        .sidebar h3 { margin-top: 0; color: #2b2d42; border-bottom: 2px solid var(--primary); padding-bottom: 10px; font-size: 1.1em; }
+        .notification-item { padding: 10px; border-radius: 8px; background: #f8f9fa; margin-bottom: 10px; border-left: 4px solid #ffba08; cursor: pointer; }
+        .notification-item.urgent { border-left-color: var(--primary); background: #fff0f3; }
+        .notify-title { font-weight: 600; font-size: 0.85em; margin-bottom: 5px; }
+        .notify-meta { font-size: 0.75em; color: var(--text-muted); }
+        .notify-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; margin-bottom: 5px; }
+        .badge-urgent { background: var(--primary); color: white; }
+        .badge-soon { background: #ffba08; color: #333; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 450px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .modal-header h3 { margin: 0; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); }
+        
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9em; font-weight: 500;}
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 6px; font-family: inherit; box-sizing: border-box; }
+        
+        .time-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .custom-time-picker { display: flex; align-items: center; background: white; border: 1px solid #ced4da; border-radius: 6px; padding: 4px 8px; }
+        .custom-time-picker select { border: none; background: transparent; font-family: 'Prompt', sans-serif; font-size: 1.05em; padding: 4px; outline: none; cursor: pointer; text-align: center; color: var(--text-main); flex: 1; }
+        .custom-time-picker select:hover { background: #f1f3f5; border-radius: 4px; }
+        .time-separator { font-weight: bold; color: var(--text-muted); padding: 0 5px; }
+
+        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 5px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #e9ecef; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.85em; cursor: pointer; margin: 0; }
+        .checkbox-item input { width: auto; margin: 0; cursor: pointer; }
+
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; margin-top: 10px;}
+        .btn-edit { background: #4dabf7; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit;}
+        .btn-delete { background: #fa5252; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-family: inherit;}
+        .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
+        .login-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 300px; }
+
+        /* Loader */
+        #loader { display: flex; justify-content: center; align-items: center; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.8); z-index: 10; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" style="display: none;">
+        <div class="login-box">
+            <h2 style="color: var(--primary); margin-top:0;">🔒 ยืนยันตัวตน Admin</h2>
+            <input type="password" id="adminPassword" placeholder="รหัสผ่าน (123456)" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center;">
+            <button class="btn-submit" onclick="checkLogin()">เข้าสู่ระบบ</button>
+            <button style="margin-top: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline; font-family: inherit;" onclick="window.location.hash='#/user'">กลับไปหน้ามุมมองผู้ใช้</button>
+        </div>
+    </div>
+
+    <div class="header-container">
+        <div>
+            <h2 style="margin: 0; color: #2b2d42;">📅 ระบบปฏิบัติงานส่วนบริการกลางฯ</h2>
+            <div id="roleIndicator" class="role-badge">👑 Admin</div>
+        </div>
+        <div class="month-controls">
+            <button onclick="changeMonth(-1)">◀ เดือนก่อนหน้า</button>
+            <button class="btn-today" onclick="goToToday()">กลับสู่วันนี้</button>
+            <button onclick="changeMonth(1)">เดือนถัดไป ▶</button>
+            <h2 id="monthYearDisplay"></h2>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="calendar-container">
+            <div id="loader">กำลังโหลดข้อมูลจากระบบ...</div>
+            <div class="calendar-header">
+                <div>อา.</div><div>จ.</div><div>อ.</div><div>พ.</div>
+                <div>พฤ.</div><div>ศ.</div><div>ส.</div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+        <div class="sidebar">
+            <h3>🔔 งานที่กำลังจะมาถึง</h3>
+            <div id="notificationList"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="addEventModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalFormTitle">📝 เพิ่มงานใหม่</h3>
+                <button class="close-btn" onclick="closeModal('addEventModal')">&times;</button>
+            </div>
+            <input type="hidden" id="selectedDateFull">
+            <input type="hidden" id="editEventId">
+            
+            <div class="form-group">
+                <label>ชื่องาน</label>
+                <input type="text" id="eventName" placeholder="เช่น งานประชุม กยศ.">
+            </div>
+            
+            <div class="time-group">
+                <div class="form-group">
+                    <label>เวลาเริ่ม</label>
+                    <div class="custom-time-picker">
+                        <select id="startHour"></select><span class="time-separator">:</span><select id="startMinute"></select>
+                        <span style="font-size: 0.85em; margin-left: 5px; color: #888;">น.</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>เวลาสิ้นสุด</label>
+                    <div class="custom-time-picker">
+                        <select id="endHour"></select><span class="time-separator">:</span><select id="endMinute"></select>
+                        <span style="font-size: 0.85em; margin-left: 5px; color: #888;">น.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>หน้าที่ที่ต้องทำ</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="จัดทำ TOR"> <span>จัดทำ TOR</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="ออกเลขครุภัณฑ์"> <span>ออกเลขครุภัณฑ์</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="เซ็ตระบบเครื่องเสียง"> <span>เซ็ตเครื่องเสียง</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="task" value="จัดสถานที่"> <span>จัดสถานที่</span></label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>โน้ตเพิ่มเติม</label>
+                <textarea id="eventNote" rows="2"></textarea>
+            </div>
+            <button class="btn-submit" id="saveBtn" onclick="saveEvent()">บันทึกข้อมูล</button>
+        </div>
+    </div>
+
+    <div class="modal" id="viewEventModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="viewTitle" style="color: var(--primary); margin:0;">ชื่องาน</h3>
+                <button class="close-btn" onclick="closeModal('viewEventModal')">&times;</button>
+            </div>
+            <p style="margin: 5px 0 15px 0; font-size: 0.9em; color: var(--text-muted);" id="viewDateStr"></p>
+            <div style="font-size: 0.95em; line-height: 1.6;">
+                <strong>⏰ เวลา:</strong> <span id="viewTime"></span><br>
+                <strong>🛠️ งานที่ต้องทำ:</strong> <span id="viewTasks"></span><br>
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 10px;">
+                    <strong>📝 โน้ต:</strong> <span id="viewNote"></span>
+                </div>
+            </div>
+            
+            <div id="adminActions" style="display: none; margin-top: 20px; text-align: right; border-top: 1px solid #eee; padding-top: 15px;">
+                <button class="btn-edit" onclick="openEditModal()">แก้ไข</button>
+                <button class="btn-delete" id="deleteBtn" onclick="deleteEvent()">ลบงาน</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ❌ นำลิงก์จาก Google Apps Script มาวางแทนที่ตรงนี้เลยครับ ❌
+        const API_URL = "https://script.google.com/macros/s/AKfycbyoaPzEBtfJjEOI22_mT7SJF6rxupOrEvxsLCr8S58FKmRCTN3EA0AHmo2nhTsbu0ix/exec";
+
+        let events = []; // ว่างไว้เพื่อรอรับค่าจาก Sheet
+
+        function initTimePickers() {
+            let hourOptions = '';
+            for(let i = 0; i <= 23; i++) {
+                let val = i.toString().padStart(2, '0');
+                hourOptions += `<option value="${val}">${val}</option>`;
+            }
+            let minuteOptions = '';
+            for(let i = 0; i < 60; i += 5) {
+                let val = i.toString().padStart(2, '0');
+                minuteOptions += `<option value="${val}">${val}</option>`;
+            }
+            document.getElementById('startHour').innerHTML = hourOptions;
+            document.getElementById('endHour').innerHTML = hourOptions;
+            document.getElementById('startMinute').innerHTML = minuteOptions;
+            document.getElementById('endMinute').innerHTML = minuteOptions;
+        }
+
+        let isAdmin = false;
+        let currentDate = new Date(); 
+        let currentMonth = currentDate.getMonth(); 
+        let currentYear = currentDate.getFullYear();
+        let currentViewEventId = null; 
+        const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+        // ฟังก์ชันดึงข้อมูลจาก Google Sheets
+        async function fetchEvents() {
+            document.getElementById('loader').style.display = 'flex';
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                events = data;
+                renderCalendar();
+                renderNotifications();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("ไม่สามารถโหลดข้อมูลจากระบบได้ กรุณาลองรีเฟรชหน้าเว็บใหม่ครับ");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        function checkRoute() {
+            const hash = window.location.hash;
+            if (hash === '#/admin' && !isAdmin) {
+                document.getElementById('loginScreen').style.display = 'flex';
+            } else {
+                document.getElementById('loginScreen').style.display = 'none';
+                if (hash !== '#/admin') {
+                    isAdmin = false;
+                    document.getElementById('roleIndicator').style.display = "none";
+                    document.body.classList.remove('admin-mode');
+                }
+            }
+        }
+
+        window.addEventListener('hashchange', checkRoute);
+
+        function checkLogin() {
+            if (document.getElementById('adminPassword').value === '123456') {
+                isAdmin = true;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('roleIndicator').style.display = "inline-block";
+                document.body.classList.add('admin-mode');
+                document.getElementById('adminPassword').value = '';
+                renderCalendar();
+            } else { alert('รหัสผ่านไม่ถูกต้องครับ'); }
+        }
+
+        function changeMonth(step) {
+            currentMonth += step;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderCalendar();
+        }
+
+        function goToToday() {
+            const today = new Date();
+            currentMonth = today.getMonth();
+            currentYear = today.getFullYear();
+            renderCalendar();
+        }
+
+        function getFormattedDate(year, month, day) {
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+
+        function renderCalendar() {
+            document.getElementById('monthYearDisplay').innerText = `${monthNames[currentMonth]} ${currentYear}`;
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const today = new Date(); 
+
+            for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')).className = 'calendar-day empty'; }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                if (i === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
+                    dayDiv.classList.add('today');
+                }
+                dayDiv.innerHTML = `<div class="day-number">${i}</div>`;
+                const dateString = getFormattedDate(currentYear, currentMonth, i);
+
+                dayDiv.onclick = (e) => {
+                    if (isAdmin && (e.target === dayDiv || e.target.className === 'day-number')) {
+                        openAddModal(dateString);
+                    }
+                };
+
+                let dayEvents = events.filter(e => e.date === dateString);
+                dayEvents.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+                dayEvents.forEach(event => {
+                    const chip = document.createElement('div');
+                    chip.className = 'event-chip';
+                    chip.innerHTML = `<span class="event-time-badge">${event.startTime} น.</span> ${event.title}`;
+                    chip.onclick = (e) => { e.stopPropagation(); openViewModal(event); };
+                    dayDiv.appendChild(chip);
+                });
+                grid.appendChild(dayDiv);
+            }
+
+            const remainingCells = 42 - (firstDay + daysInMonth);
+            for(let i = 0; i < remainingCells; i++) { grid.appendChild(document.createElement('div')).className = 'calendar-day empty'; }
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notificationList');
+            list.innerHTML = '';
+            const now = new Date();
+
+            let upcomingEvents = events.map(e => {
+                const [year, month, day] = e.date.split('-');
+                const [hour, min] = e.startTime ? e.startTime.split(':') : ['00', '00'];
+                const eventDateTime = new Date(year, month - 1, day, hour, min);
+                const diffMs = eventDateTime - now;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                const diffDays = Math.floor(diffHours / 24);
+                return { ...e, diffMs, diffMins, diffHours, diffDays };
+            }).filter(e => e.diffMs > 0 && e.diffDays <= 7).sort((a, b) => a.diffMs - b.diffMs);
+
+            if (upcomingEvents.length === 0) {
+                list.innerHTML = '<p style="color:#aaa; text-align:center; font-size:0.9em; margin-top: 20px;">ไม่มีคิวงานเร่งด่วนครับ 🎉</p>';
+                return;
+            }
+
+            upcomingEvents.forEach(event => {
+                const item = document.createElement('div');
+                let badgeHtml = '';
+                if (event.diffDays === 0) {
+                    item.className = 'notification-item urgent';
+                    if (event.diffHours < 1) { badgeHtml = `<span class="notify-badge badge-urgent">อีก ${event.diffMins} นาที!</span>`; } 
+                    else { badgeHtml = `<span class="notify-badge badge-urgent">อีก ${event.diffHours} ชม. ${event.diffMins % 60} นาที</span>`; }
+                } else {
+                    item.className = 'notification-item';
+                    badgeHtml = `<span class="notify-badge badge-soon">อีก ${event.diffDays} วัน</span>`;
+                }
+                item.innerHTML = `
+                    ${badgeHtml}
+                    <div class="notify-title">${event.title}</div>
+                    <div class="notify-meta">⏰ ${event.startTime} - ${event.endTime || '?'} น. | 🛠️ ${event.tasks.join(', ')}</div>
+                `;
+                item.onclick = () => openViewModal(event);
+                list.appendChild(item);
+            });
+        }
+
+        function openAddModal(dateStr, eventToEdit = null) {
+            document.getElementById('selectedDateFull').value = dateStr;
+            if(eventToEdit) {
+                document.getElementById('modalFormTitle').innerText = '✏️ แก้ไขงาน';
+                document.getElementById('editEventId').value = eventToEdit.id;
+                document.getElementById('eventName').value = eventToEdit.title;
+                let [sHour, sMin] = eventToEdit.startTime.split(':');
+                document.getElementById('startHour').value = sHour; document.getElementById('startMinute').value = sMin;
+                if(eventToEdit.endTime) { let [eHour, eMin] = eventToEdit.endTime.split(':'); document.getElementById('endHour').value = eHour; document.getElementById('endMinute').value = eMin; } 
+                else { document.getElementById('endHour').value = '12'; document.getElementById('endMinute').value = '00'; }
+                document.getElementById('eventNote').value = eventToEdit.note;
+                document.querySelectorAll('input[name="task"]').forEach(cb => { cb.checked = eventToEdit.tasks.includes(cb.value); });
+            } else {
+                document.getElementById('modalFormTitle').innerText = '📝 เพิ่มงานใหม่';
+                document.getElementById('editEventId').value = ''; document.getElementById('eventName').value = ''; document.getElementById('eventNote').value = '';
+                document.getElementById('startHour').value = '09'; document.getElementById('startMinute').value = '00';
+                document.getElementById('endHour').value = '12'; document.getElementById('endMinute').value = '00';
+                document.querySelectorAll('input[name="task"]').forEach(cb => cb.checked = false);
+            }
+            document.getElementById('addEventModal').style.display = 'flex';
+        }
+
+        function openViewModal(event) {
+            currentViewEventId = event.id; 
+            const d = new Date(event.date);
+            const dateText = `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+            document.getElementById('viewTitle').innerText = event.title;
+            document.getElementById('viewDateStr').innerText = `📅 กำหนดการ: ${dateText}`;
+            document.getElementById('viewTime').innerText = `${event.startTime} - ${event.endTime || 'ไม่ได้ระบุ'} น.`;
+            document.getElementById('viewTasks').innerText = event.tasks.join(', ') || '-';
+            document.getElementById('viewNote').innerText = event.note || "- ไม่มีโน้ตเพิ่มเติม -";
+            document.getElementById('adminActions').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('viewEventModal').style.display = 'flex';
+        }
+
+        function openEditModal() {
+            const eventToEdit = events.find(e => e.id.toString() === currentViewEventId.toString());
+            closeModal('viewEventModal');
+            openAddModal(eventToEdit.date, eventToEdit);
+        }
+
+        async function deleteEvent() {
+            if(confirm('คุณแน่ใจหรือไม่ว่าต้องการลบงานนี้?')) {
+                const btn = document.getElementById('deleteBtn');
+                btn.innerText = 'กำลังลบ...'; btn.disabled = true;
+
+                try {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'delete', data: { id: currentViewEventId } })
+                    });
+                    
+                    // ลบในเครื่องด้วยเพื่อไม่ต้องโหลดใหม่ทั้งหมดทันที
+                    events = events.filter(e => e.id.toString() !== currentViewEventId.toString());
+                    closeModal('viewEventModal');
+                    renderCalendar();
+                    renderNotifications();
+                } catch(err) { alert('เกิดข้อผิดพลาดในการลบงาน'); } 
+                finally { btn.innerText = 'ลบงาน'; btn.disabled = false; }
+            }
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+
+        async function saveEvent() {
+            const idToEdit = document.getElementById('editEventId').value;
+            const dateStr = document.getElementById('selectedDateFull').value;
+            const title = document.getElementById('eventName').value;
+            const startTime = `${document.getElementById('startHour').value}:${document.getElementById('startMinute').value}`;
+            const endTime = `${document.getElementById('endHour').value}:${document.getElementById('endMinute').value}`;
+            const note = document.getElementById('eventNote').value;
+            const tasks = Array.from(document.querySelectorAll('input[name="task"]:checked')).map(cb => cb.value);
+
+            if (!title) { alert('กรุณาใส่ชื่องานให้เรียบร้อยครับ'); return; }
+
+            const eventData = {
+                id: idToEdit || Date.now().toString(),
+                date: dateStr, startTime, endTime, title, tasks, note
+            };
+
+            const actionType = idToEdit ? 'edit' : 'add';
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = 'กำลังบันทึกข้อมูล...'; btn.disabled = true;
+
+            try {
+                // ส่งข้อมูลไป Google Sheets
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: actionType, data: eventData })
+                });
+
+                // อัปเดตข้อมูลบนหน้าจอ
+                if (idToEdit) {
+                    const index = events.findIndex(e => e.id.toString() === idToEdit.toString());
+                    events[index] = eventData;
+                } else {
+                    events.push(eventData);
+                }
+
+                closeModal('addEventModal');
+                renderCalendar();
+                renderNotifications();
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่ครับ');
+                console.error(err);
+            } finally {
+                btn.innerText = 'บันทึกข้อมูล'; btn.disabled = false;
+            }
+        }
+
+        // โหลดฟังก์ชันเริ่มต้น
+        initTimePickers();
+        checkRoute();
+        
+        // ถ้าใส่ API URL แล้ว ให้ดึงข้อมูลมาแสดง ถ้ายังไม่ใส่จะแสดงปฏิทินเปล่า
+        if(API_URL !== "วาง_URL_จาก_APPS_SCRIPT_ตรงนี้" && API_URL !== "") {
+            fetchEvents();
+        } else {
+            document.getElementById('loader').style.display = 'none';
+            renderCalendar();
+        }
+        
+        setInterval(renderNotifications, 60000); 
+    </script>
+</body>
+</html>
+บรรทัด ไหนกันแน่อีกอันบอกอีกบรรทัด
